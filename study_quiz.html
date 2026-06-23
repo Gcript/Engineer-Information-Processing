@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>정보처리기사 실기 학습 퀴즈</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #eef2f6;
+      --text: #20242a;
+      --muted: #66707d;
+      --border: #d9e0e8;
+      --primary: #166a5b;
+      --primary-2: #0f4d43;
+      --danger: #b23b47;
+      --warning: #a76a12;
+      --focus: #2f80ed;
+      --shadow: 0 16px 34px rgba(34, 42, 53, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(22, 106, 91, 0.08), rgba(246, 247, 249, 0) 320px),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .app {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 42px);
+      letter-spacing: 0;
+      line-height: 1.12;
+    }
+
+    .title p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(110px, 1fr));
+      gap: 10px;
+      min-width: 460px;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel,
+    .quiz-surface {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 16px;
+      position: sticky;
+      top: 16px;
+    }
+
+    .section {
+      padding: 0 0 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .mode {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .mode.active {
+      border-color: var(--primary);
+      background: #e8f4f1;
+    }
+
+    .mode svg,
+    .icon-button svg,
+    .primary svg,
+    .secondary svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
+    }
+
+    .mode .icon-box {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--primary);
+    }
+
+    .mode strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .mode span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    select,
+    input[type="number"],
+    input[type="search"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus,
+    button:focus-visible {
+      outline: 3px solid rgba(47, 128, 237, 0.22);
+      outline-offset: 2px;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--text);
+      font-size: 14px;
+      user-select: none;
+    }
+
+    .toggle-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .primary,
+    .secondary,
+    .danger,
+    .grade {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .primary:hover {
+      background: var(--primary-2);
+    }
+
+    .secondary,
+    .icon-button {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .danger {
+      background: #fff0f1;
+      color: var(--danger);
+      border: 1px solid #efc5cb;
+    }
+
+    .icon-button {
+      display: grid;
+      place-items: center;
+      min-width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      padding: 0;
+    }
+
+    .mini-plan {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mini-plan strong {
+      color: var(--text);
+    }
+
+    .progress-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .progress-item {
+      display: grid;
+      gap: 5px;
+      font-size: 13px;
+    }
+
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .bar {
+      height: 8px;
+      overflow: hidden;
+      background: var(--surface-2);
+      border-radius: 999px;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--primary);
+    }
+
+    .quiz-surface {
+      min-height: 680px;
+      overflow: hidden;
+    }
+
+    .quiz-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #fbfcfd;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .quiz-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .content {
+      padding: 22px;
+    }
+
+    .question-box {
+      min-height: 220px;
+      white-space: pre-wrap;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      font-size: 18px;
+      line-height: 1.72;
+    }
+
+    .answer-box,
+    .note-box {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fbfcfd;
+    }
+
+    .answer-box h3,
+    .note-box h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .answer-text {
+      white-space: pre-wrap;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    .note-box textarea {
+      margin-top: 8px;
+    }
+
+    .grade-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .grade.correct {
+      background: #e9f6ef;
+      color: #16613c;
+      border: 1px solid #b9dfc8;
+    }
+
+    .grade.hard {
+      background: #fff6e8;
+      color: var(--warning);
+      border: 1px solid #edd4a9;
+    }
+
+    .grade.wrong {
+      background: #fff0f1;
+      color: var(--danger);
+      border: 1px solid #efc5cb;
+    }
+
+    .empty {
+      display: grid;
+      min-height: 560px;
+      place-items: center;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 22px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: min(420px, calc(100vw - 36px));
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #20242a;
+      color: #fff;
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      transform: translateY(18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 940px) {
+      .topbar,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .status-strip {
+        min-width: 0;
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        width: min(100vw - 20px, 1180px);
+        padding-top: 14px;
+      }
+
+      .status-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .quiz-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .quiz-actions {
+        justify-content: stretch;
+      }
+
+      .quiz-actions button {
+        flex: 1;
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      .question-box {
+        font-size: 16px;
+      }
+
+      .grade-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="title">
+        <h1>정보처리기사 실기 학습 퀴즈</h1>
+        <p>짧게 풀고, 직접 채점하고, 틀린 문제를 다시 만나도록 만든 반복 학습용 화면입니다.</p>
+      </div>
+      <div class="status-strip" aria-label="학습 현황">
+        <div class="stat"><span>전체 문제</span><strong id="totalCount">-</strong></div>
+        <div class="stat"><span>오늘 풀이</span><strong id="todayCount">0</strong></div>
+        <div class="stat"><span>누적 정답률</span><strong id="accuracy">0%</strong></div>
+        <div class="stat"><span>복습 필요</span><strong id="weakCount">0</strong></div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel" aria-label="학습 설정">
+        <section class="section">
+          <h2>학습 모드</h2>
+          <div class="mode-grid">
+            <button class="mode active" data-mode="daily" type="button">
+              <span class="icon-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
+              </span>
+              <span><strong>오늘 30문제</strong><span>전체에서 섞어 풀기</span></span>
+            </button>
+            <button class="mode" data-mode="source" type="button">
+              <span class="icon-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>
+              </span>
+              <span><strong>분야별 회독</strong><span>키워드, SQL, 코드</span></span>
+            </button>
+            <button class="mode" data-mode="weak" type="button">
+              <span class="icon-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="m10.3 3.86-8.02 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.72-3.14l-8.02-14a2 2 0 0 0-3.4 0z"/></svg>
+              </span>
+              <span><strong>오답 압축</strong><span>틀렸거나 어려운 문제</span></span>
+            </button>
+            <button class="mode" data-mode="search" type="button">
+              <span class="icon-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
+              <span><strong>키워드 검색</strong><span>약한 개념만 골라 풀기</span></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>출제 설정</h2>
+          <div class="field" id="sourceField">
+            <label for="sourceSelect">분야</label>
+            <select id="sourceSelect">
+              <option value="키워드찾기">키워드찾기</option>
+              <option value="SQL">SQL</option>
+              <option value="코드-제어문">코드-제어문</option>
+            </select>
+          </div>
+          <div class="field" id="searchField">
+            <label for="searchInput">검색어</label>
+            <input id="searchInput" type="search" placeholder="예: 정규화, UML, JOIN">
+          </div>
+          <div class="field">
+            <label for="countInput">문제 수</label>
+            <input id="countInput" type="number" min="1" max="161" value="30">
+          </div>
+          <label class="toggle-row">
+            <input id="showExplanation" type="checkbox">
+            정답과 함께 해설 보기
+          </label>
+          <div class="button-row">
+            <button id="startBtn" class="primary" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              시작
+            </button>
+            <button id="resetBtn" class="icon-button" type="button" title="현재 진도 초기화" aria-label="현재 진도 초기화">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>추천 루틴</h2>
+          <div class="mini-plan">
+            <div><strong>1회독</strong> 분야별로 짧게 끊어서 끝까지 확인</div>
+            <div><strong>2회독</strong> 오늘 30문제로 순서 기억 제거</div>
+            <div><strong>마무리</strong> 오답 압축과 검색으로 약점만 반복</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>분야별 진도</h2>
+          <div class="progress-list" id="progressList"></div>
+        </section>
+      </aside>
+
+      <section class="quiz-surface" aria-live="polite">
+        <div id="emptyState" class="empty">
+          <div>
+            <strong>학습 세션을 시작하세요</strong>
+            <p>추천은 오늘 30문제입니다. 답을 본 뒤 정확히 기억났을 때만 맞음으로 채점하세요.</p>
+          </div>
+        </div>
+
+        <div id="quizView" class="hidden">
+          <div class="quiz-head">
+            <div>
+              <div class="meta">
+                <span class="pill" id="questionMeta">-</span>
+                <span id="progressMeta">-</span>
+              </div>
+            </div>
+            <div class="quiz-actions">
+              <button id="prevBtn" class="secondary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 18-6-6 6-6"/></svg>
+                이전
+              </button>
+              <button id="nextBtn" class="secondary" type="button">
+                다음
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="content">
+            <div id="questionText" class="question-box"></div>
+            <div class="note-box">
+              <h3>내 답</h3>
+              <textarea id="myAnswer" placeholder="직접 입력하거나 머릿속으로 풀고 바로 정답을 확인하세요."></textarea>
+            </div>
+            <button id="revealBtn" class="primary" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              정답 보기
+            </button>
+            <div id="answerBox" class="answer-box hidden">
+              <h3>정답</h3>
+              <div id="answerText" class="answer-text"></div>
+              <div id="explanationWrap" class="hidden">
+                <h3 style="margin-top:16px">해설</h3>
+                <div id="explanationText" class="answer-text"></div>
+              </div>
+              <div class="grade-row">
+                <button class="grade correct" data-grade="correct" type="button">맞음</button>
+                <button class="grade hard" data-grade="hard" type="button">애매함</button>
+                <button class="grade wrong" data-grade="wrong" type="button">틀림</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    const STORAGE_KEY = "ipc-practical-study-v1";
+    const TODAY_KEY = new Date().toISOString().slice(0, 10);
+
+    const state = {
+      data: null,
+      questions: [],
+      session: [],
+      index: 0,
+      mode: "daily",
+      revealed: false,
+      store: loadStore()
+    };
+
+    const els = {
+      totalCount: document.querySelector("#totalCount"),
+      todayCount: document.querySelector("#todayCount"),
+      accuracy: document.querySelector("#accuracy"),
+      weakCount: document.querySelector("#weakCount"),
+      progressList: document.querySelector("#progressList"),
+      sourceField: document.querySelector("#sourceField"),
+      searchField: document.querySelector("#searchField"),
+      sourceSelect: document.querySelector("#sourceSelect"),
+      searchInput: document.querySelector("#searchInput"),
+      countInput: document.querySelector("#countInput"),
+      showExplanation: document.querySelector("#showExplanation"),
+      startBtn: document.querySelector("#startBtn"),
+      resetBtn: document.querySelector("#resetBtn"),
+      emptyState: document.querySelector("#emptyState"),
+      quizView: document.querySelector("#quizView"),
+      questionMeta: document.querySelector("#questionMeta"),
+      progressMeta: document.querySelector("#progressMeta"),
+      questionText: document.querySelector("#questionText"),
+      myAnswer: document.querySelector("#myAnswer"),
+      revealBtn: document.querySelector("#revealBtn"),
+      answerBox: document.querySelector("#answerBox"),
+      answerText: document.querySelector("#answerText"),
+      explanationWrap: document.querySelector("#explanationWrap"),
+      explanationText: document.querySelector("#explanationText"),
+      prevBtn: document.querySelector("#prevBtn"),
+      nextBtn: document.querySelector("#nextBtn"),
+      toast: document.querySelector("#toast")
+    };
+
+    function loadStore() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { answers: {}, today: {} };
+      } catch {
+        return { answers: {}, today: {} };
+      }
+    }
+
+    function saveStore() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.store));
+    }
+
+    function iconlessText(value) {
+      return String(value ?? "");
+    }
+
+    function shuffle(items) {
+      const copy = items.slice();
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function getRecord(id) {
+      return state.store.answers[id] || {
+        attempts: 0,
+        correct: 0,
+        wrong: 0,
+        hard: 0,
+        lastGrade: null,
+        lastSeen: null
+      };
+    }
+
+    function isWeak(question) {
+      const record = getRecord(question.id);
+      return record.lastGrade === "wrong" || record.lastGrade === "hard" || record.wrong > record.correct;
+    }
+
+    function pickSession() {
+      let selected = state.questions.slice();
+      const count = Math.max(1, Number(els.countInput.value) || 30);
+
+      if (state.mode === "source") {
+        selected = selected.filter(q => q.source === els.sourceSelect.value);
+      }
+
+      if (state.mode === "weak") {
+        selected = selected.filter(isWeak);
+      }
+
+      if (state.mode === "search") {
+        const keyword = els.searchInput.value.trim().toLocaleLowerCase("ko-KR");
+        selected = selected.filter(q => {
+          const haystack = [q.question, q.answer, q.explanation].join("\n").toLocaleLowerCase("ko-KR");
+          return keyword && haystack.includes(keyword);
+        });
+      }
+
+      selected = shuffle(selected).slice(0, count);
+      return selected;
+    }
+
+    function startSession() {
+      state.session = pickSession();
+      state.index = 0;
+      state.revealed = false;
+
+      if (!state.session.length) {
+        showToast("조건에 맞는 문제가 없습니다. 모드나 검색어를 바꿔보세요.");
+        els.quizView.classList.add("hidden");
+        els.emptyState.classList.remove("hidden");
+        return;
+      }
+
+      els.emptyState.classList.add("hidden");
+      els.quizView.classList.remove("hidden");
+      renderQuestion();
+      showToast(`${state.session.length}문제 세션을 시작했습니다.`);
+    }
+
+    function renderQuestion() {
+      const q = state.session[state.index];
+      state.revealed = false;
+      els.questionMeta.textContent = `${q.source} #${q.number}`;
+      els.progressMeta.textContent = `${state.index + 1} / ${state.session.length}`;
+      els.questionText.textContent = q.question;
+      els.myAnswer.value = "";
+      els.answerText.textContent = q.answer;
+      els.explanationText.textContent = q.explanation || "";
+      els.explanationWrap.classList.toggle("hidden", !els.showExplanation.checked || !q.explanation);
+      els.answerBox.classList.add("hidden");
+      els.revealBtn.classList.remove("hidden");
+      els.prevBtn.disabled = state.index === 0;
+      els.nextBtn.disabled = state.index === state.session.length - 1;
+    }
+
+    function revealAnswer() {
+      state.revealed = true;
+      els.answerBox.classList.remove("hidden");
+      els.revealBtn.classList.add("hidden");
+    }
+
+    function gradeCurrent(grade) {
+      const q = state.session[state.index];
+      const record = getRecord(q.id);
+      record.attempts += 1;
+      record.lastGrade = grade;
+      record.lastSeen = new Date().toISOString();
+      if (grade === "correct") record.correct += 1;
+      if (grade === "wrong") record.wrong += 1;
+      if (grade === "hard") record.hard += 1;
+      state.store.answers[q.id] = record;
+      state.store.today[TODAY_KEY] = (state.store.today[TODAY_KEY] || 0) + 1;
+      saveStore();
+      renderStats();
+
+      if (state.index < state.session.length - 1) {
+        state.index += 1;
+        renderQuestion();
+      } else {
+        showToast("세션을 끝냈습니다. 오답 압축으로 바로 복습할 수 있습니다.");
+      }
+    }
+
+    function renderStats() {
+      if (!state.data) return;
+      const records = Object.values(state.store.answers);
+      const attempts = records.reduce((sum, r) => sum + r.attempts, 0);
+      const correct = records.reduce((sum, r) => sum + r.correct, 0);
+      const accuracy = attempts ? Math.round((correct / attempts) * 100) : 0;
+      const weakCount = state.questions.filter(isWeak).length;
+
+      els.totalCount.textContent = state.data.total_count;
+      els.todayCount.textContent = state.store.today[TODAY_KEY] || 0;
+      els.accuracy.textContent = `${accuracy}%`;
+      els.weakCount.textContent = weakCount;
+
+      const bySource = state.questions.reduce((acc, q) => {
+        acc[q.source] = acc[q.source] || { total: 0, seen: 0 };
+        acc[q.source].total += 1;
+        if (state.store.answers[q.id]?.attempts) acc[q.source].seen += 1;
+        return acc;
+      }, {});
+
+      els.progressList.innerHTML = Object.entries(bySource).map(([source, item]) => {
+        const pct = item.total ? Math.round((item.seen / item.total) * 100) : 0;
+        return `
+          <div class="progress-item">
+            <div class="progress-head"><span>${source}</span><strong>${item.seen}/${item.total}</strong></div>
+            <div class="bar" aria-label="${source} 진도 ${pct}%"><span style="width:${pct}%"></span></div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll(".mode").forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === mode);
+      });
+      els.sourceField.classList.toggle("hidden", mode !== "source");
+      els.searchField.classList.toggle("hidden", mode !== "search");
+      els.countInput.value = mode === "daily" ? 30 : mode === "source" ? 40 : 20;
+    }
+
+    function resetProgress() {
+      if (!confirm("이 브라우저에 저장된 풀이 기록을 초기화할까요?")) return;
+      state.store = { answers: {}, today: {} };
+      saveStore();
+      renderStats();
+      showToast("진도를 초기화했습니다.");
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2400);
+    }
+
+    async function init() {
+      setMode("daily");
+      try {
+        const response = await fetch("questions.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        state.data = await response.json();
+        state.questions = state.data.questions || [];
+        renderStats();
+      } catch (error) {
+        els.emptyState.innerHTML = `
+          <div>
+            <strong>questions.json을 읽지 못했습니다</strong>
+            <p>이 파일은 로컬 서버에서 열어야 합니다. 터미널에서 <code>python3 -m http.server 8000</code> 실행 후 접속하세요.</p>
+          </div>
+        `;
+        showToast("문제 데이터를 불러오지 못했습니다.");
+      }
+    }
+
+    document.querySelectorAll(".mode").forEach(button => {
+      button.addEventListener("click", () => setMode(button.dataset.mode));
+    });
+
+    els.startBtn.addEventListener("click", startSession);
+    els.resetBtn.addEventListener("click", resetProgress);
+    els.revealBtn.addEventListener("click", revealAnswer);
+    els.prevBtn.addEventListener("click", () => {
+      if (state.index > 0) {
+        state.index -= 1;
+        renderQuestion();
+      }
+    });
+    els.nextBtn.addEventListener("click", () => {
+      if (state.index < state.session.length - 1) {
+        state.index += 1;
+        renderQuestion();
+      }
+    });
+    document.querySelectorAll("[data-grade]").forEach(button => {
+      button.addEventListener("click", () => gradeCurrent(button.dataset.grade));
+    });
+    document.addEventListener("keydown", event => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (event.key === " ") {
+        event.preventDefault();
+        if (!state.revealed && state.session.length) revealAnswer();
+      }
+      if (event.key === "ArrowRight" && state.index < state.session.length - 1) {
+        state.index += 1;
+        renderQuestion();
+      }
+      if (event.key === "ArrowLeft" && state.index > 0) {
+        state.index -= 1;
+        renderQuestion();
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
