@@ -216,6 +216,7 @@
     select,
     input[type="number"],
     input[type="search"],
+    input[type="password"],
     textarea {
       width: 100%;
       border: 1px solid var(--border);
@@ -471,6 +472,20 @@
       font-size: 22px;
     }
 
+    .unlock-form {
+      display: grid;
+      gap: 10px;
+      width: min(420px, 100%);
+      margin: 18px auto 0;
+      text-align: left;
+    }
+
+    .unlock-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -545,6 +560,10 @@
       }
 
       .grade-row {
+        grid-template-columns: 1fr;
+      }
+
+      .unlock-row {
         grid-template-columns: 1fr;
       }
     }
@@ -648,8 +667,15 @@
       <section class="quiz-surface" aria-live="polite">
         <div id="emptyState" class="empty">
           <div>
-            <strong>학습 세션을 시작하세요</strong>
-            <p>추천은 오늘 30문제입니다. 답을 본 뒤 정확히 기억났을 때만 맞음으로 채점하세요.</p>
+            <strong>문제 데이터 잠금 해제</strong>
+            <p>비밀번호를 입력하면 이 브라우저 안에서만 문제와 정답을 복호화합니다.</p>
+            <form id="unlockForm" class="unlock-form">
+              <label for="passwordInput">비밀번호</label>
+              <div class="unlock-row">
+                <input id="passwordInput" type="password" autocomplete="current-password">
+                <button id="unlockBtn" class="primary" type="submit">열기</button>
+              </div>
+            </form>
           </div>
         </div>
 
@@ -745,6 +771,9 @@
       explanationText: document.querySelector("#explanationText"),
       prevBtn: document.querySelector("#prevBtn"),
       nextBtn: document.querySelector("#nextBtn"),
+      unlockForm: document.querySelector("#unlockForm"),
+      passwordInput: document.querySelector("#passwordInput"),
+      unlockBtn: document.querySelector("#unlockBtn"),
       toast: document.querySelector("#toast")
     };
 
@@ -771,6 +800,49 @@
         [copy[i], copy[j]] = [copy[j], copy[i]];
       }
       return copy;
+    }
+
+    function base64ToBytes(value) {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function bytesToText(bytes) {
+      return new TextDecoder().decode(bytes);
+    }
+
+    async function deriveUnlockKey(password, salt, iterations) {
+      const passwordBytes = new TextEncoder().encode(password);
+      const baseKey = await crypto.subtle.importKey(
+        "raw",
+        passwordBytes,
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+        baseKey,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+      );
+    }
+
+    async function decryptQuestions(payload, password) {
+      if (!payload || payload.version !== 1 || payload.cipher !== "AES-GCM") {
+        throw new Error("지원하지 않는 암호화 데이터입니다.");
+      }
+      const salt = base64ToBytes(payload.salt);
+      const iv = base64ToBytes(payload.iv);
+      const data = base64ToBytes(payload.data);
+      const key = await deriveUnlockKey(password, salt, payload.iterations);
+      const plainBytes = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+      return JSON.parse(bytesToText(new Uint8Array(plainBytes)));
     }
 
     function getRecord(id) {
@@ -814,6 +886,11 @@
     }
 
     function startSession() {
+      if (!state.questions.length) {
+        showToast("먼저 문제 데이터 비밀번호를 입력하세요.");
+        els.passwordInput?.focus();
+        return;
+      }
       state.session = pickSession();
       state.index = 0;
       state.revealed = false;
@@ -934,19 +1011,47 @@
     async function init() {
       setMode("daily");
       try {
-        const response = await fetch("questions.json", { cache: "no-store" });
+        const response = await fetch("questions.enc.json", { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        state.data = await response.json();
-        state.questions = state.data.questions || [];
-        renderStats();
+        state.encryptedPayload = await response.json();
+        els.startBtn.disabled = true;
+        els.passwordInput.focus();
       } catch (error) {
         els.emptyState.innerHTML = `
           <div>
-            <strong>questions.json을 읽지 못했습니다</strong>
-            <p>이 파일은 로컬 서버에서 열어야 합니다. 터미널에서 <code>python3 -m http.server 8000</code> 실행 후 접속하세요.</p>
+            <strong>questions.enc.json을 읽지 못했습니다</strong>
+            <p>암호화된 문제 파일이 필요합니다. 관리자라면 <code>node encrypt_questions.mjs</code>로 파일을 만든 뒤 다시 배포하세요.</p>
           </div>
         `;
         showToast("문제 데이터를 불러오지 못했습니다.");
+      }
+    }
+
+    async function unlockQuestions(event) {
+      event.preventDefault();
+      const password = els.passwordInput.value;
+      if (!password) {
+        showToast("비밀번호를 입력하세요.");
+        return;
+      }
+      els.unlockBtn.disabled = true;
+      try {
+        state.data = await decryptQuestions(state.encryptedPayload, password);
+        state.questions = state.data.questions || [];
+        els.passwordInput.value = "";
+        els.startBtn.disabled = false;
+        els.emptyState.innerHTML = `
+          <div>
+            <strong>학습 세션을 시작하세요</strong>
+            <p>추천은 오늘 30문제입니다. 답을 본 뒤 정확히 기억났을 때만 맞음으로 채점하세요.</p>
+          </div>
+        `;
+        renderStats();
+        showToast("문제 데이터 잠금을 해제했습니다.");
+      } catch (error) {
+        showToast("비밀번호가 맞지 않거나 데이터가 손상되었습니다.");
+      } finally {
+        els.unlockBtn.disabled = false;
       }
     }
 
@@ -956,6 +1061,7 @@
 
     els.startBtn.addEventListener("click", startSession);
     els.resetBtn.addEventListener("click", resetProgress);
+    els.unlockForm.addEventListener("submit", unlockQuestions);
     els.revealBtn.addEventListener("click", revealAnswer);
     els.prevBtn.addEventListener("click", () => {
       if (state.index > 0) {
