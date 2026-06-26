@@ -1,12 +1,21 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 
 const INPUT_FILE = "questions.json";
 const OUTPUT_FILE = "questions.enc.json";
+const ENCRYPTED_IMAGE_DIR = "assets/question-crops-enc";
 const ITERATIONS = 250000;
 
 function toBase64(bytes) {
   return Buffer.from(bytes).toString("base64");
+}
+
+function encryptedImagePath(src) {
+  const filename = src.split("/").pop();
+  if (!filename) {
+    throw new Error(`Invalid image path: ${src}`);
+  }
+  return `${ENCRYPTED_IMAGE_DIR}/${filename}.enc`;
 }
 
 function readHidden(prompt) {
@@ -77,16 +86,16 @@ async function main() {
     throw new Error("Password is required.");
   }
 
-  const plainText = await readFile(INPUT_FILE, "utf8");
-  JSON.parse(plainText);
-
   const salt = webcrypto.getRandomValues(new Uint8Array(16));
   const iv = webcrypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(password, salt);
+  const plainText = await readFile(INPUT_FILE, "utf8");
+  const questions = JSON.parse(plainText);
+  const publishData = await encryptQuestionImages(questions, key);
   const encrypted = await webcrypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
-    new TextEncoder().encode(plainText)
+    new TextEncoder().encode(JSON.stringify(publishData))
   );
 
   const payload = {
@@ -101,6 +110,43 @@ async function main() {
 
   await writeFile(OUTPUT_FILE, `${JSON.stringify(payload)}\n`, "utf8");
   console.log(`Wrote ${OUTPUT_FILE}`);
+}
+
+async function encryptQuestionImages(data, key) {
+  const publishData = JSON.parse(JSON.stringify(data));
+  let imageCount = 0;
+
+  await rm(ENCRYPTED_IMAGE_DIR, { recursive: true, force: true });
+  await mkdir(ENCRYPTED_IMAGE_DIR, { recursive: true });
+
+  for (const question of publishData.questions || []) {
+    if (!Array.isArray(question.question_images)) continue;
+
+    for (const image of question.question_images) {
+      if (!image.src) continue;
+
+      const sourcePath = image.src;
+      const targetPath = encryptedImagePath(sourcePath);
+      const imageBytes = await readFile(sourcePath);
+      const imageIv = webcrypto.getRandomValues(new Uint8Array(12));
+      const encryptedImage = await webcrypto.subtle.encrypt(
+        { name: "AES-GCM", iv: imageIv },
+        key,
+        imageBytes
+      );
+
+      await writeFile(targetPath, Buffer.from(encryptedImage));
+      image.encrypted_src = targetPath;
+      image.iv = toBase64(imageIv);
+      image.mime = "image/png";
+      delete image.src;
+      imageCount += 1;
+    }
+  }
+
+  publishData.encrypted_image_count = imageCount;
+  console.log(`Encrypted ${imageCount} question images`);
+  return publishData;
 }
 
 main().catch((error) => {

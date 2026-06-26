@@ -404,6 +404,29 @@
       line-height: 1.72;
     }
 
+    .question-media {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 4px;
+    }
+
+    .question-media figure {
+      margin: 0;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .question-media img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+    }
+
     .answer-box,
     .note-box {
       margin-top: 18px;
@@ -634,10 +657,6 @@
             <label for="countInput">문제 수</label>
             <input id="countInput" type="number" min="1" max="161" value="30">
           </div>
-          <label class="toggle-row">
-            <input id="showExplanation" type="checkbox">
-            정답과 함께 해설 보기
-          </label>
           <div class="button-row">
             <button id="startBtn" class="primary" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -701,6 +720,7 @@
 
           <div class="content">
             <div id="questionText" class="question-box"></div>
+            <div id="questionImages" class="question-media hidden"></div>
             <div class="note-box">
               <h3>내 답</h3>
               <textarea id="myAnswer" placeholder="직접 입력하거나 머릿속으로 풀고 바로 정답을 확인하세요."></textarea>
@@ -741,6 +761,9 @@
       index: 0,
       mode: "daily",
       revealed: false,
+      unlockKey: null,
+      imageRenderToken: 0,
+      imageUrls: new Map(),
       store: loadStore()
     };
 
@@ -755,7 +778,6 @@
       sourceSelect: document.querySelector("#sourceSelect"),
       searchInput: document.querySelector("#searchInput"),
       countInput: document.querySelector("#countInput"),
-      showExplanation: document.querySelector("#showExplanation"),
       startBtn: document.querySelector("#startBtn"),
       resetBtn: document.querySelector("#resetBtn"),
       emptyState: document.querySelector("#emptyState"),
@@ -763,6 +785,7 @@
       questionMeta: document.querySelector("#questionMeta"),
       progressMeta: document.querySelector("#progressMeta"),
       questionText: document.querySelector("#questionText"),
+      questionImages: document.querySelector("#questionImages"),
       myAnswer: document.querySelector("#myAnswer"),
       revealBtn: document.querySelector("#revealBtn"),
       answerBox: document.querySelector("#answerBox"),
@@ -842,7 +865,10 @@
       const data = base64ToBytes(payload.data);
       const key = await deriveUnlockKey(password, salt, payload.iterations);
       const plainBytes = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-      return JSON.parse(bytesToText(new Uint8Array(plainBytes)));
+      return {
+        data: JSON.parse(bytesToText(new Uint8Array(plainBytes))),
+        key
+      };
     }
 
     function getRecord(id) {
@@ -914,14 +940,79 @@
       els.questionMeta.textContent = `${q.source} #${q.number}`;
       els.progressMeta.textContent = `${state.index + 1} / ${state.session.length}`;
       els.questionText.textContent = q.question;
+      renderQuestionImages(q);
       els.myAnswer.value = "";
       els.answerText.textContent = q.answer;
       els.explanationText.textContent = q.explanation || "";
-      els.explanationWrap.classList.toggle("hidden", !els.showExplanation.checked || !q.explanation);
+      els.explanationWrap.classList.toggle("hidden", !q.explanation);
       els.answerBox.classList.add("hidden");
       els.revealBtn.classList.remove("hidden");
       els.prevBtn.disabled = state.index === 0;
       els.nextBtn.disabled = state.index === state.session.length - 1;
+    }
+
+    async function renderQuestionImages(question) {
+      const images = Array.isArray(question.question_images)
+        ? question.question_images
+        : Array.isArray(question.images)
+          ? question.images
+          : [];
+      const renderToken = state.imageRenderToken + 1;
+      state.imageRenderToken = renderToken;
+      els.questionImages.replaceChildren();
+      els.questionImages.classList.toggle("hidden", images.length === 0);
+      els.questionText.classList.toggle("hidden", images.length > 0);
+
+      for (const [index, image] of images.entries()) {
+        if (!image || (!image.src && !image.encrypted_src)) continue;
+
+        const figure = document.createElement("figure");
+        const img = document.createElement("img");
+        img.alt = image.alt || `${question.source} ${question.number}번 문제 그림 ${index + 1}`;
+        img.loading = "lazy";
+        img.decoding = "async";
+        if (image.width) img.width = image.width;
+        if (image.height) img.height = image.height;
+        figure.append(img);
+        els.questionImages.append(figure);
+
+        try {
+          const src = await resolveQuestionImageSrc(image);
+          if (renderToken !== state.imageRenderToken) return;
+          img.src = src;
+        } catch {
+          if (renderToken !== state.imageRenderToken) return;
+          figure.remove();
+          showToast("문제 이미지를 복호화하지 못했습니다.");
+        }
+      }
+    }
+
+    async function resolveQuestionImageSrc(image) {
+      if (image.src) return image.src;
+      if (!state.unlockKey || !image.encrypted_src || !image.iv) {
+        throw new Error("이미지 복호화 정보가 없습니다.");
+      }
+
+      const cacheKey = `${image.encrypted_src}:${image.iv}`;
+      if (state.imageUrls.has(cacheKey)) {
+        return state.imageUrls.get(cacheKey);
+      }
+
+      const response = await fetch(image.encrypted_src, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const encryptedBytes = await response.arrayBuffer();
+      const plainBytes = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: base64ToBytes(image.iv) },
+        state.unlockKey,
+        encryptedBytes
+      );
+      const blob = new Blob([plainBytes], { type: image.mime || "image/png" });
+      const url = URL.createObjectURL(blob);
+      state.imageUrls.set(cacheKey, url);
+      return url;
     }
 
     function revealAnswer() {
@@ -1036,7 +1127,9 @@
       }
       els.unlockBtn.disabled = true;
       try {
-        state.data = await decryptQuestions(state.encryptedPayload, password);
+        const unlocked = await decryptQuestions(state.encryptedPayload, password);
+        state.data = unlocked.data;
+        state.unlockKey = unlocked.key;
         state.questions = state.data.questions || [];
         els.passwordInput.value = "";
         els.startBtn.disabled = false;

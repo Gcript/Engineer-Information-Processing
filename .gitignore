@@ -3,5 +3,7 @@
 __pycache__/
 *.pyc
 questions.json
+assets/question-crops/
+assets/question-images/
 *.pdf
 *.zip
