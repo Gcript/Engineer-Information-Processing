@@ -5,5 +5,8 @@ __pycache__/
 questions.json
 assets/question-crops/
 assets/question-images/
+# Keep both Korean Unicode forms ignored on macOS/Git.
+기출문제/
+기출문제/
 *.pdf
 *.zip

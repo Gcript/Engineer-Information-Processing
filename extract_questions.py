@@ -10,6 +10,7 @@ import fitz
 
 
 ROOT = Path(__file__).resolve().parent
+PDF_SOURCE_DIR = ROOT / "기출문제"
 OUTPUT = ROOT / "questions.json"
 CROP_OUTPUT_DIR = ROOT / "assets" / "question-crops"
 CROP_OUTPUT_PREFIX = "assets/question-crops"
@@ -32,6 +33,11 @@ PDFS = [
     PdfSpec("정보처리기사실기_01_키워드찾기130문제.pdf", "키워드찾기", "keyword", 130),
     PdfSpec("정보처리기사실기_02_SQL17문제.pdf", "SQL", "sql", 17),
     PdfSpec("정보처리기사실기_03_코드-제어문14문제.pdf", "코드-제어문", "code-control", 14),
+    PdfSpec("정보처리기사실기_04_코드-포인터5문제.pdf", "코드-포인터", "code-pointer", 5),
+    PdfSpec("정보처리기사실기_05_코드-구조체3문제.pdf", "코드-구조체", "code-struct", 3),
+    PdfSpec("정보처리기사실기_06_코드-사용자정의함수9문제.pdf", "코드-사용자정의함수", "code-function", 9),
+    PdfSpec("정보처리기사실기_07_코드-JAVA활용9문제.pdf", "코드-JAVA활용", "code-java", 9),
+    PdfSpec("정보처리기사실기_08_코드-Python활용6문제.pdf", "코드-Python활용", "code-python", 6),
 ]
 
 
@@ -69,6 +75,10 @@ def extract_pdf_text(path: Path) -> str:
     return normalize_text("\n".join(pages))
 
 
+def pdf_path(spec: PdfSpec) -> Path:
+    return PDF_SOURCE_DIR / spec.filename
+
+
 def iter_text_lines(page: fitz.Page) -> list[tuple[float, str]]:
     lines: dict[tuple[int, int], list[tuple[float, float, str]]] = {}
     for x0, y0, _x1, _y1, word, block_no, line_no, _word_no in page.get_text("words", sort=True):
@@ -86,9 +96,10 @@ def iter_text_lines(page: fitz.Page) -> list[tuple[float, str]]:
 
 def collect_question_anchors(
     doc: fitz.Document, expected_count: int, filename: str
-) -> tuple[list[TextAnchor], list[AnswerAnchor]]:
+) -> tuple[list[TextAnchor], list[AnswerAnchor], list[AnswerAnchor]]:
     candidates: list[TextAnchor] = []
     answers: list[AnswerAnchor] = []
+    explanations: list[AnswerAnchor] = []
 
     for page_index, page in enumerate(doc):
         for y, text in iter_text_lines(page):
@@ -106,8 +117,15 @@ def collect_question_anchors(
             if re.match(r"^답\s*(?::|$)", text):
                 answers.append(AnswerAnchor(page_index, y, linear_coord(page_index, y)))
 
+            if re.match(r"^(?:배열\s*<field>\s+)?배열\s*<mines>$", text):
+                answers.append(AnswerAnchor(page_index, y, linear_coord(page_index, y)))
+
+            if re.match(r"^(?:\[\s*해설\s*\]|해설)$", text):
+                explanations.append(AnswerAnchor(page_index, y, linear_coord(page_index, y)))
+
     candidates.sort(key=lambda anchor: anchor.coord)
     answers.sort(key=lambda anchor: anchor.coord)
+    explanations.sort(key=lambda anchor: anchor.coord)
 
     starts: list[TextAnchor] = []
     cursor = -1.0
@@ -121,7 +139,7 @@ def collect_question_anchors(
         starts.append(match)
         cursor = match.coord
 
-    return starts, answers
+    return starts, answers, explanations
 
 
 def reset_crop_output_dir() -> None:
@@ -175,18 +193,28 @@ def crop_between(
 
 
 def crop_question_pages(spec: PdfSpec) -> dict[int, list[dict[str, object]]]:
-    path = ROOT / spec.filename
+    path = pdf_path(spec)
     by_question: dict[int, list[dict[str, object]]] = {}
 
     with fitz.open(path) as doc:
-        starts, answers = collect_question_anchors(doc, spec.expected_count, spec.filename)
+        starts, answers, explanations = collect_question_anchors(
+            doc, spec.expected_count, spec.filename
+        )
 
         for index, start in enumerate(starts):
             question_number = index + 1
             next_start = starts[index + 1] if index + 1 < len(starts) else None
             question_end_coord = next_start.coord if next_start else linear_coord(len(doc), 0)
+            question_explanations = [
+                explanation
+                for explanation in explanations
+                if start.coord < explanation.coord < question_end_coord
+            ]
+            answer_search_end = (
+                question_explanations[0].coord if question_explanations else question_end_coord
+            )
             question_answers = [
-                answer for answer in answers if start.coord < answer.coord < question_end_coord
+                answer for answer in answers if start.coord < answer.coord < answer_search_end
             ]
             crop_index = 1
             segment_page = start.page_index
@@ -244,6 +272,10 @@ def split_answer(block: str, filename: str, number: int) -> tuple[str, str, str]
     body, explanation = split_explanation(block)
     answer_labels = list(re.finditer(r"(?m)^\s*답\s*(?::\s*(?P<first>.*)|$)", body))
     if not answer_labels:
+        fallback = split_mines_table_answer(body)
+        if fallback:
+            question, answer = fallback
+            return clean_block(question), clean_block(answer), clean_block(explanation)
         raise ValueError(f"{filename}: {number}번 문제의 정답 표식을 찾지 못했습니다.")
 
     first_label = answer_labels[0]
@@ -258,6 +290,25 @@ def split_answer(block: str, filename: str, number: int) -> tuple[str, str, str]
         answer = summarize_interleaved_answers(answer_labels)
 
     return clean_block(question), clean_block(answer), clean_block(explanation)
+
+
+def split_mines_table_answer(body: str) -> tuple[str, str] | None:
+    match = re.search(r"(?m)^배열\s*<field>\s+배열\s*<mines>\s*$", body)
+    if not match:
+        return None
+
+    mines_rows: list[str] = []
+    for line in body[match.end() :].splitlines():
+        values = re.findall(r"\d+", line)
+        if len(values) >= 8:
+            mines_rows.append(" ".join(values[-4:]))
+
+    if not mines_rows:
+        return None
+
+    question = body[: match.start()].strip()
+    answer = "배열 <mines>\n" + "\n".join(mines_rows)
+    return question, answer
 
 
 def split_explanation(text: str) -> tuple[str, str]:
@@ -292,7 +343,7 @@ def clean_block(text: str) -> str:
 def parse_pdf(
     spec: PdfSpec, crops_by_question: dict[int, list[dict[str, object]]]
 ) -> tuple[list[dict[str, object]], str]:
-    path = ROOT / spec.filename
+    path = pdf_path(spec)
     text = extract_pdf_text(path)
     starts = find_question_starts(text, spec.expected_count, spec.filename)
     intro = text[: starts[0].start()].strip()

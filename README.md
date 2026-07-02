@@ -5,7 +5,7 @@
 ## 주요 기능
 
 - 오늘 학습용 랜덤 문제 출제
-- 키워드찾기, SQL, 코드-제어문 분야별 학습
+- 키워드찾기, SQL, 코드 분야별 학습
 - 틀림/애매함으로 표시한 문제만 다시 푸는 오답 압축
 - 키워드 검색을 통한 약점 주제 반복
 - 브라우저 로컬 저장소를 이용한 풀이 기록 저장
@@ -22,7 +22,7 @@
 
 문제 데이터는 `questions.enc.json`으로 암호화되어 있습니다. 문제 이미지는 `assets/question-crops-enc/`에 암호화된 파일로 저장됩니다. 화면에서 비밀번호를 입력해야 브라우저 안에서 문제, 정답, 이미지가 복호화됩니다.
 
-평문 원본인 `questions.json`과 `assets/question-crops/`는 로컬에서만 관리하며 저장소에는 올리지 않습니다.
+평문 원본인 `questions.json`, `assets/question-crops/`, PDF/ZIP 원본을 모아 둔 `기출문제/` 폴더는 로컬에서만 관리하며 저장소에는 올리지 않습니다.
 
 ## 비밀번호 변경
 
@@ -42,7 +42,7 @@ git push origin main
 
 ## PDF에서 문제 이미지 다시 생성
 
-PDF 원본에서 각 문제 영역을 이미지로 잘라 `questions.json`과 `assets/question-crops/`를 갱신합니다.
+`기출문제/` 폴더의 PDF 원본에서 각 문제 영역을 이미지로 잘라 `questions.json`과 `assets/question-crops/`를 갱신합니다.
 
 ```bash
 .venv/bin/python extract_questions.py

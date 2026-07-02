@@ -643,11 +643,7 @@
           <h2>출제 설정</h2>
           <div class="field" id="sourceField">
             <label for="sourceSelect">분야</label>
-            <select id="sourceSelect">
-              <option value="키워드찾기">키워드찾기</option>
-              <option value="SQL">SQL</option>
-              <option value="코드-제어문">코드-제어문</option>
-            </select>
+            <select id="sourceSelect"></select>
           </div>
           <div class="field" id="searchField">
             <label for="searchInput">검색어</label>
@@ -655,7 +651,7 @@
           </div>
           <div class="field">
             <label for="countInput">문제 수</label>
-            <input id="countInput" type="number" min="1" max="161" value="30">
+            <input id="countInput" type="number" min="1" value="30">
           </div>
           <div class="button-row">
             <button id="startBtn" class="primary" type="button">
@@ -911,6 +907,24 @@
       return selected;
     }
 
+    function renderSourceOptions() {
+      const sourceNames = state.data?.sources
+        ? Object.keys(state.data.sources)
+        : [...new Set(state.questions.map(q => q.source))];
+
+      els.sourceSelect.replaceChildren(
+        ...sourceNames.map(source => {
+          const option = document.createElement("option");
+          option.value = source;
+          option.textContent = source;
+          return option;
+        })
+      );
+
+      const total = Number(state.data?.total_count) || state.questions.length || 1;
+      els.countInput.max = String(total);
+    }
+
     function startSession() {
       if (!state.questions.length) {
         showToast("먼저 문제 데이터 비밀번호를 입력하세요.");
@@ -1131,6 +1145,7 @@
         state.data = unlocked.data;
         state.unlockKey = unlocked.key;
         state.questions = state.data.questions || [];
+        renderSourceOptions();
         els.passwordInput.value = "";
         els.startBtn.disabled = false;
         els.emptyState.innerHTML = `
